@@ -130,8 +130,10 @@
     const margem = parseDec(q('margem').value);
     const taxa = Math.min(90, parseDec(q('taxa').value));
     const calc = q('calculos');
+    // So redesenha quando o conteudo muda: trocar os botoes no meio de um clique cancela o clique.
+    const pintarCalc = (html) => { if (st.ultimoHtml !== html) { st.ultimoHtml = html; calc.innerHTML = html; } };
     if (!(custo > 0)) {
-      calc.innerHTML = `<div class="dica">${nome ? `Digite quanto você pagou por ${nome.replace(/</g, '&lt;')} (por unidade). Fica salvo no navegador.` : 'Digite quanto você pagou por unidade.'}</div>`;
+      pintarCalc(`<div class="dica">${nome ? `Digite quanto você pagou por ${nome.replace(/</g, '&lt;')} (por unidade). Fica salvo no navegador.` : 'Digite quanto você pagou por unidade.'}</div>`);
       return;
     }
     const preco = parseNum(form.querySelector('#cm-preco')?.value);
@@ -154,7 +156,7 @@
       ${qtd > 1 ? `<div class="linha"><span>Lucro por unidade</span><b class="v ${cls}">${lucro >= 0 ? '+' : '−'}${fmt(Math.abs(lucro / qtd))}</b></div>` : ''}
       ${lucro < 0 ? '<div class="dica ruim">Abaixo do empate: você perde Coins nessa venda.</div>' : ''}`;
     }
-    calc.innerHTML = linhas;
+    pintarCalc(linhas);
   }
 
   // ---------- ciclo: acha o formulario de anunciar, monta e atualiza ----------
@@ -169,7 +171,12 @@
 
   document.addEventListener('input', (e) => { if (e.target?.id === 'cm-preco') varrer(); }, true);
   document.addEventListener('click', () => setTimeout(varrer, 0), true); // trocar moeda/quantidade
-  new MutationObserver(() => varrer()).observe(document.documentElement, { childList: true, subtree: true });
+  let agendado = false;
+  new MutationObserver(() => {
+    if (agendado) return;
+    agendado = true;
+    requestAnimationFrame(() => { agendado = false; varrer(); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
   setInterval(varrer, 1000);
   varrer();
   window.__pokeidlePrecoAssist = { precoEmpate, precoParaMargem, liquidoTotal };
